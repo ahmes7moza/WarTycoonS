@@ -1,0 +1,367 @@
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local ESP = {
+    loop = nil,
+    highlightLoop = nil,
+    highlights = {},
+    ShowDistance = false
+}
+
+local Aimbot = {
+    Enabled = false,
+    Keybind = Enum.KeyCode.G,
+    TeamCheck = false,
+    AimPart = "Head",
+    Sensitivity = 0
+}
+
+local Window = Rayfield:CreateWindow({
+    Name = "Legend Hub [Ware Tycoon] | by lg0_",
+    LoadingTitle = "Legend Hub",
+    LoadingSubtitle = "by lg0_",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = nil,
+        FileName = "Legend Hub"
+    },
+    Discord = {
+        Enabled = false,
+        Invite = "noinvitelink",
+        RememberJoins = true
+    },
+    KeySystem = true,
+    KeySettings = {
+        Title = "War Tycoon | Key",
+        Subtitle = "by lg0_",
+        Note = "Yaba4a ana b7bk",
+        FileName = "Key",
+        SaveKey = true,
+        GrabKeyFromSite = false,
+        Key = {"1"}
+    }
+})
+
+local MainTab = Window:CreateTab("Main", 4483362458)
+local MainSection = MainTab:CreateSection("Main")
+
+local Slider = MainTab:CreateSlider({
+    Name = "Walk Speed",
+    Range = {0, 200},
+    Increment = 1,
+    Suffix = "Speed",
+    CurrentValue = 16,
+    Flag = "Slider1",
+    Callback = function(Value)
+        game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+    end,
+})
+
+local Slider = MainTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {0, 200},
+    Increment = 1,
+    Suffix = "Jump",
+    CurrentValue = 50,
+    Flag = "Slider2",
+    Callback = function(Value)
+        game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+    end,
+})
+
+local NoClipEnabled = false
+local ToggleNoClip = MainTab:CreateToggle({
+    Name = "NoClip",
+    CurrentValue = false,
+    Flag = "Toggle3",
+    Callback = function(Value)
+        NoClipEnabled = Value
+        if Value then
+            game:GetService("RunService").Stepped:Connect(function()
+                if NoClipEnabled then
+                    for _, Part in ipairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                        if Part:IsA("BasePart") then
+                            Part.CanCollide = false
+                        end
+                    end
+                end
+            end)
+        else
+            for _, Part in ipairs(game.Players.LocalPlayer.Character:GetDescendants()) do
+                if Part:IsA("BasePart") then
+                    Part.CanCollide = true
+                end
+            end
+        end
+    end,
+})
+
+-- ESP
+local ESPTab = Window:CreateTab("ESP", 4483362458) -- Title, Image
+local ESPSection = ESPTab:CreateSection("ESP")
+
+local ESPLabels = {}
+
+local function CreateESPLabel(Player)
+    local Label = Drawing.new("Text")
+    Label.Text = Player.Name
+    Label.Size = 20
+    Label.Color = Color3.fromRGB(255, 255, 255)
+    Label.Visible = true
+    Label.Center = true
+    Label.Outline = false
+    Label.Font = Drawing.Fonts.UI
+    Label.StrokeWidth = 2
+    Label.StrokeTransparency = 0.8
+    return Label
+end
+
+local function UpdateESPLabel(Label, Player, ShowDistance)
+    local Character = Player.Character
+    if Character and Character:FindFirstChild("HumanoidRootPart") then
+        local Head = Character:FindFirstChild("HumanoidRootPart")
+        local ScreenPosition = workspace.CurrentCamera:WorldToViewportPoint(Head.Position)
+        if ScreenPosition.Z >= 0 then
+            if ShowDistance then
+                local distance = (game.Players.LocalPlayer:DistanceFromCharacter(Head.Position))
+                Label.Text = Player.Name .. " [" .. math.floor(distance) .. "m]"
+            else
+                Label.Text = Player.Name
+            end
+            Label.Position = Vector2.new(ScreenPosition.X, ScreenPosition.Y)
+            Label.Visible = true
+        else
+            Label.Visible = false
+        end
+    else
+        Label.Visible = false
+    end
+end
+
+function ESP:start()
+    ESP:stop()
+    ESP.loop = game:GetService("RunService").Heartbeat:Connect(function()
+        local ShowDistance = ESP.ShowDistance
+        for _, Player in ipairs(game.Players:GetPlayers()) do
+            if Player ~= game.Players.LocalPlayer then
+                local Label = ESPLabels[Player]
+                if not Label then
+                    Label = CreateESPLabel(Player)
+                    ESPLabels[Player] = Label
+                end
+                UpdateESPLabel(Label, Player, ShowDistance)
+            end
+        end
+    end)
+end
+
+function ESP:stop()
+    if ESP.loop then
+        ESP.loop:Disconnect()
+        ESP.loop = nil
+    end
+    for _, Label in pairs(ESPLabels) do
+        Label:Remove()
+    end
+    ESPLabels = {}
+end
+
+local ESPEnabled = false
+local ToggleESP = ESPTab:CreateToggle({
+    Name = "ESP",
+    CurrentValue = false,
+    Flag = "Toggle2",
+    Callback = function(Value)
+        ESPEnabled = Value
+        if Value then
+            ESP:start()
+        else
+            ESP:stop()
+        end
+    end,
+})
+
+local ESPColorPicker = ESPTab:CreateColorPicker({
+    Name = "ESP Color",
+    Color = Color3.fromRGB(255, 255, 255),
+    Flag = "ColorPicker1",
+    Callback = function(Value)
+        for _, Label in pairs(ESPLabels) do
+            Label.Color = Value
+        end
+    end,
+})
+
+local HighlightEnabled = false
+local HighlightColor = Color3.fromRGB(255, 0, 0)
+local ToggleHighlight = ESPTab:CreateToggle({
+    Name = "Highlight",
+    CurrentValue = false,
+    Flag = "Toggle3",
+    Callback = function(Value)
+        HighlightEnabled = Value
+        if Value then
+            ESP:highlightStart()
+        else
+            ESP:highlightStop()
+        end
+    end,
+})
+
+local HighlightColorPicker = ESPTab:CreateColorPicker({
+    Name = "Highlight Color",
+    Color = HighlightColor,
+    Flag = "ColorPicker2",
+    Callback = function(Value)
+        HighlightColor = Value
+        for _, Highlight in pairs(ESP.highlights) do
+            Highlight.FillColor = HighlightColor
+        end
+    end,
+})
+
+function ESP:highlightStart()
+    ESP:highlightStop()
+    ESP.highlightLoop = game:GetService("RunService").Heartbeat:Connect(function()
+        for _, Player in ipairs(game.Players:GetPlayers()) do
+            if Player ~= game.Players.LocalPlayer then
+                local Character = Player.Character
+                if Character and Character:FindFirstChild("HumanoidRootPart") and not ESP.highlights[Player] then
+                    local Highlight = Instance.new("Highlight")
+                    Highlight.Adornee = Character
+                    Highlight.FillColor = HighlightColor
+                    Highlight.OutlineColor = Color3.fromRGB(0, 0, 0)
+                    Highlight.Parent = Character
+                    ESP.highlights[Player] = Highlight
+                end
+            end
+        end
+    end)
+end
+
+function ESP:highlightStop()
+    if ESP.highlightLoop then
+        ESP.highlightLoop:Disconnect()
+        ESP.highlightLoop = nil
+    end
+    for _, Highlight in pairs(ESP.highlights) do
+        Highlight:Destroy()
+    end
+    ESP.highlights = {}
+end
+
+local ShowDistance = false
+local ToggleDistance = ESPTab:CreateToggle({
+    Name = "Show Distance",
+    CurrentValue = false,
+    Flag = "Toggle4",
+    Callback = function(Value)
+        ShowDistance = Value
+        ESP.ShowDistance = Value
+    end,
+})
+
+
+local AimbotTab = Window:CreateTab("Aimbot", 4483362458) -- Title, Image
+local AimbotSection = AimbotTab:CreateSection("Section Example")
+
+
+-- Aimbot Integration
+_G.AimbotEnabled = Aimbot.Enabled
+_G.TeamCheck = Aimbot.TeamCheck
+_G.AimPart = Aimbot.AimPart
+_G.Sensitivity = Aimbot.Sensitivity
+
+local function GetClosestPlayer()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+
+    for _, player in ipairs(game.Players:GetPlayers()) do
+        if player ~= game.Players.LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            if _G.TeamCheck and player.Team == game.Players.LocalPlayer.Team then
+                continue
+            end
+
+            local distance = (player.Character.HumanoidRootPart.Position - game.Players.LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if distance < shortestDistance then
+                closestPlayer = player
+                shortestDistance = distance
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function AimAt(Player)
+    if Player and Player.Character then
+        local AimPart = Player.Character:FindFirstChild(_G.AimPart)
+        if AimPart then
+            local aimPos = AimPart.Position
+            local cam = workspace.CurrentCamera
+            local startPos = cam.CFrame.Position
+            local endPos = aimPos
+
+            -- Calculate the new CFrame with sensitivity
+            local direction = (endPos - startPos).unit
+            local newCFrame = CFrame.new(startPos, startPos + direction * _G.Sensitivity)
+            cam.CFrame = newCFrame
+        end
+    end
+end
+
+
+local AimbotToggle = AimbotTab:CreateToggle({
+    Name = "Aimbot",
+    CurrentValue = false,
+    Flag = "Toggle5",
+    Callback = function(Value)
+        _G.AimbotEnabled = Value
+        
+    end,
+})
+
+local TeamCheckToggle = AimbotTab:CreateToggle({
+    Name = "Team Check",
+    CurrentValue = false,
+    Flag = "Toggle6",
+    Callback = function(Value)
+        _G.TeamCheck = Value
+    end,
+})
+
+local AimPartDropdown = AimbotTab:CreateDropdown({
+    Name = "Aim Part",
+    Options = {"Head", "Torso"},
+    CurrentOption = "Head",
+    Flag = "Dropdown1",
+    Callback = function(Option)
+        _G.AimPart = Option
+    end,
+})
+
+local SensitivitySlider = AimbotTab:CreateSlider({
+    Name = "Sensitivity",
+    Range = {0, 1},
+    Increment = 0.1,
+    Suffix = "",
+    CurrentValue = 0,
+    Flag = "Slider3",
+    Callback = function(Value)
+        _G.Sensitivity = Value
+    end,
+})
+
+local function AimbotLogic()
+    if not _G.AimbotEnabled then
+        return
+    end
+
+    local closestPlayer = GetClosestPlayer()
+    if closestPlayer then
+        AimAt(closestPlayer)
+    end
+end
+
+game:GetService("RunService").Stepped:Connect(function()
+    AimbotLogic()
+end)
